@@ -1,24 +1,28 @@
-import fetch from "node-fetch";
+from fastapi import FastAPI, Request
+import os
+import requests
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(200).send("OK");
-  }
+app = FastAPI()
 
-  const message = req.body?.message;
-  if (!message) return res.status(200).send("OK");
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise Exception("BOT_TOKEN not set")
 
-  const chatId = message.chat.id;
-  const text = message.text || "Hello";
+API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-  await fetch(`https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: `You said: ${text}`
-    })
-  });
+@app.post("/")
+async def webhook(request: Request):
+    try:
+        data = await request.json()
+    except:
+        return {"ok": True}
 
-  res.status(200).send("OK");
-}
+    message = data.get("message")
+    if message:
+        chat_id = message["chat"]["id"]
+        text = message.get("text", "Hello")
+        requests.post(
+            f"{API_URL}/sendMessage",
+            json={"chat_id": chat_id, "text": f"You said: {text}"}
+        )
+    return {"ok": True}
